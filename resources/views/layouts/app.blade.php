@@ -34,7 +34,7 @@
             </nav>
         </aside>
 
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex-1 flex flex-col overflow-hidden ">
             <header class="h-16 bg-white shadow-sm flex items-center px-6">
                 <h2 class="text-xl font-semibold text-gray-800">Dashboard</h2>
             </header>

@@ -8,9 +8,9 @@
     </button>
 </div>
 
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-    <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
+<div class="bg-white rounded-xl shadow-sm border border-gray-100">
+    <div class="">
+        <table class="w-full text-left border-collapse ">
             <thead>
                 <tr class="bg-gray-50 border-b border-gray-100 text-sm text-gray-500 uppercase tracking-wider">
                     <th class="py-4 px-6 font-medium">No</th>
