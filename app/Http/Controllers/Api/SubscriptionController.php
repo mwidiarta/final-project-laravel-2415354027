@@ -3,148 +3,174 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
+use App\Models\Customer;
+use App\Models\Service;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SubscriptionController extends Controller
 {
-    public function index(Request $request): JsonResponse {        
-        $status = $request->query("status");         
-        
+    public function index(Request $request): JsonResponse
+    {
+        $status = $request->query("status");
+
         // Menggunakan eager loading (.with) agar detail data customer & layanan ikut terbawa
-        $query = Subscription::query()->with(["customer", "service"]);         
-        
-        if ($status !== null) {            
+        $query = Subscription::query()->with(["customer", "service"]);
+
+        if ($status !== null) {
             if (!in_array($status, ["active", "inactive", "trial", "isolir", "dismantle"], true)) {
-                return response()->json([                    
-                    "success" => false,                    
-                    "message" => "Validation failed",                    
-                    "errors" => [                        
-                        "status" => ["The selected status is invalid."],                    
-                    ],                
-                ], 422);            
-            }             
-            $query->where("status", $status);        
-        }         
-        
-        $subscriptions = $query->latest()->get();         
-        return response()->json([            
-            "success" => true,            
-            "message" => "Subscriptions retrieved successfully",            
-            "data" => $subscriptions,        
-        ]);    
-    } 
+                return response()->json([
+                    "success" => false,
+                    "message" => "Validation failed",
+                    "errors" => [
+                        "status" => ["The selected status is invalid."],
+                    ],
+                ], 422);
+            }
+            $query->where("status", $status);
+        }
 
-    public function store(Request $request): JsonResponse {
-        $data = $request->validate([            
-            "customer_id" => ["required", "integer", "exists:customers,id"],            
-            "service_id" => ["required", "integer", "exists:services,id"],            
-            "start_date" => ["required", "date"],            
-            "end_date" => ["nullable", "date", "after_or_equal:start_date"],            
-            "status" => ["nullable", "string", "in:active,inactive,trial,isolir,dismantle"],        
-        ]);         
-        
-        $data["status"] = $data["status"] ?? "trial";         
-        
-        $subscription = Subscription::query()->create($data);         
-        
+        $subscriptions = $query->latest()->get();
+        return response()->json([
+            "success" => true,
+            "message" => "Subscriptions retrieved successfully",
+            "data" => $subscriptions,
+        ]);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            "customer_id" => ["required", "integer", "exists:customers,id"],
+            "service_id" => ["required", "integer", "exists:services,id"],
+            "start_date" => ["required", "date"],
+            "end_date" => ["nullable", "date", "after_or_equal:start_date"],
+            "status" => ["nullable", "string", "in:active,inactive,trial,isolir,dismantle"],
+        ]);
+
+        $customer = Customer::query()->find($data["customer_id"]);
+        if (!$customer || !$customer->status) {
+            return response()->json([
+                "success" => false,
+                "message" => "Customer must be active to create a subscription",
+                "errors" => [],
+            ], 422);
+        }
+
+        $service = Service::query()->find($data["service_id"]);
+        if (!$service || !$service->status) {
+            return response()->json([
+                "success" => false,
+                "message" => "Service must be active to create a subscription",
+                "errors" => [],
+            ], 422);
+        }
+
+        $data["status"] = $data["status"] ?? "trial";
+
+        $subscription = Subscription::query()->create($data);
+
         $subscription->load(["customer", "service"]);
 
-        return response()->json([            
-            "success" => true,            
-            "message" => "Subscription created successfully",            
-            "data" => $subscription,        
-        ], 201);    
-    } 
+        return response()->json([
+            "success" => true,
+            "message" => "Subscription created successfully",
+            "data" => $subscription,
+        ], 201);
+    }
 
-    public function show(int $subscription): JsonResponse {        
-        $subscription = Subscription::query()->with(["customer", "service"])->find($subscription);         
-        
-        if (!$subscription) {            
-            return response()->json([                
-                "success" => false,                
-                "message" => "Subscription not found",                
-                "errors" => [],            
-            ], 404);        
-        }         
-        
-        return response()->json([            
-            "success" => true,            
-            "message" => "Subscription retrieved successfully",            
-            "data" => $subscription,        
-        ]);    
-    }     
+    public function show(int $subscription): JsonResponse
+    {
+        $subscription = Subscription::query()->with(["customer", "service"])->find($subscription);
 
-    public function update(Request $request, int $subscription): JsonResponse {        
-        $subscription = Subscription::query()->find($subscription);         
-        
-        if (!$subscription) {            
-            return response()->json([                
-                "success" => false,                
-                "message" => "Subscription not found",                
-                "errors" => [],            
-            ], 404);        
-        }         
-        
-        $data = $request->validate([            
-            "customer_id" => ["sometimes", "integer", "exists:customers,id"],            
-            "service_id" => ["sometimes", "integer", "exists:services,id"],            
-            "start_date" => ["sometimes", "date"],            
-            "end_date" => ["nullable", "date", "after_or_equal:start_date"],            
-            "status" => ["sometimes", "string", "in:active,inactive,trial,isolir,dismantle"],        
-        ]);         
-        
-        $subscription->update($data);         
+        if (!$subscription) {
+            return response()->json([
+                "success" => false,
+                "message" => "Subscription not found",
+                "errors" => [],
+            ], 404);
+        }
+
+        return response()->json([
+            "success" => true,
+            "message" => "Subscription retrieved successfully",
+            "data" => $subscription,
+        ]);
+    }
+
+    public function update(Request $request, int $subscription): JsonResponse
+    {
+        $subscription = Subscription::query()->find($subscription);
+
+        if (!$subscription) {
+            return response()->json([
+                "success" => false,
+                "message" => "Subscription not found",
+                "errors" => [],
+            ], 404);
+        }
+
+        $data = $request->validate([
+            "customer_id" => ["sometimes", "integer", "exists:customers,id"],
+            "service_id" => ["sometimes", "integer", "exists:services,id"],
+            "start_date" => ["sometimes", "date"],
+            "end_date" => ["nullable", "date", "after_or_equal:start_date"],
+            "status" => ["sometimes", "string", "in:active,inactive,trial,isolir,dismantle"],
+        ]);
+
+        $subscription->update($data);
         $subscription->load(["customer", "service"]);
 
-        return response()->json([            
-            "success" => true,            
-            "message" => "Subscription updated successfully",            
-            "data" => $subscription,        
-        ]);    
-    } 
+        return response()->json([
+            "success" => true,
+            "message" => "Subscription updated successfully",
+            "data" => $subscription,
+        ]);
+    }
 
-    public function destroy(int $subscription): JsonResponse {        
-        $subscription = Subscription::query()->find($subscription);         
-        
-        if (!$subscription) {            
-            return response()->json([                
-                "success" => false,                
-                "message" => "Subscription not found",                
-                "errors" => [],            
-            ], 404);        
-        }         
-        
-        $subscription->delete();         
-        return response()->json([            
-            "success" => true,            
-            "message" => "Subscription deleted successfully",            
-            "data" => null,        
-        ]);    
-    } 
+    public function destroy(int $subscription): JsonResponse
+    {
+        $subscription = Subscription::query()->find($subscription);
 
-    public function updateStatus(Request $request, int $subscription): JsonResponse {        
-        $subscription = Subscription::query()->find($subscription);         
-        
-        if (!$subscription) {            
-            return response()->json([                
-                "success" => false,                
-                "message" => "Subscription not found",                
-                "errors" => [],            
-            ], 404);        
-        }         
-        
+        if (!$subscription) {
+            return response()->json([
+                "success" => false,
+                "message" => "Subscription not found",
+                "errors" => [],
+            ], 404);
+        }
+
+        $subscription->delete();
+        return response()->json([
+            "success" => true,
+            "message" => "Subscription deleted successfully",
+            "data" => null,
+        ]);
+    }
+
+    public function updateStatus(Request $request, int $subscription): JsonResponse
+    {
+        $subscription = Subscription::query()->find($subscription);
+
+        if (!$subscription) {
+            return response()->json([
+                "success" => false,
+                "message" => "Subscription not found",
+                "errors" => [],
+            ], 404);
+        }
+
         $data = $request->validate([
             "status" => ["required", "string", "in:active,inactive,trial,isolir,dismantle"]
         ]);
-        
-        $subscription->update(["status" => $data["status"]]);         
+
+        $subscription->update(["status" => $data["status"]]);
         $subscription->load(["customer", "service"]);
 
-        return response()->json([            
-            "success" => true,            
-            "message" => "Subscription status updated to " . $data["status"] . " successfully",            
-            "data" => $subscription,        
-        ]);    
-    } 
+        return response()->json([
+            "success" => true,
+            "message" => "Subscription status updated to " . $data["status"] . " successfully",
+            "data" => $subscription,
+        ]);
+    }
 }
